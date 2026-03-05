@@ -8,7 +8,7 @@ import matplotlib.patches as patches
 # CONFIG
 # -----------------------------
 
-client = OpenAI(api_key="YOUR_API_KEY")
+client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 st.set_page_config(
     page_title="LE Investigative Toolkit",
@@ -254,5 +254,6 @@ NOTES:
             model="gpt-4o-mini",
             messages=[{"role":"user","content":prompt}]
         )
+
 
         st.write(response.choices[0].message.content)
