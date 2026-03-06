@@ -5,16 +5,16 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
 # =====================================================
-# PAGE SETUP
+# PAGE CONFIG
 # =====================================================
 
 st.set_page_config(
-    page_title="Law Enforcement Investigative Toolkit",
+    page_title="LE Investigative Toolkit",
     layout="wide"
 )
 
 # =====================================================
-# STYLE (BADGE + POLICE LIGHTS)
+# CLEAN UI STYLE
 # =====================================================
 
 st.markdown("""
@@ -22,10 +22,11 @@ st.markdown("""
 
 .header {
     text-align:center;
+    margin-bottom:20px;
 }
 
 .title {
-    font-size:40px;
+    font-size:36px;
     font-weight:bold;
 }
 
@@ -33,21 +34,16 @@ st.markdown("""
     color:gray;
 }
 
-.lights {
-    height:10px;
-    background: linear-gradient(90deg, red 50%, blue 50%);
-    background-size:40px 10px;
-    animation: flash 1s linear infinite;
-}
-
-@keyframes flash {
-    from {background-position:0px;}
-    to {background-position:40px;}
+.accent-bar {
+    height:6px;
+    background: linear-gradient(90deg,#1e40af,#64748b);
+    border-radius:4px;
+    margin-bottom:20px;
 }
 
 .card {
     background:#f8fafc;
-    padding:20px;
+    padding:18px;
     border-radius:10px;
     border:1px solid #e2e8f0;
 }
@@ -55,12 +51,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="lights"></div>', unsafe_allow_html=True)
+st.markdown('<div class="accent-bar"></div>', unsafe_allow_html=True)
 
 st.markdown("""
 <div class="header">
-<div class="title">🛡️ Law Enforcement Investigative Toolkit</div>
-<div class="subtitle">Report review • Reconstruction tools • Investigation analysis</div>
+<div class="title">🛡 Law Enforcement Investigation Toolkit</div>
+<div class="subtitle">Report Review • Reconstruction Tools • Investigation Analysis</div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -75,110 +71,94 @@ if not secure_mode:
     client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # =====================================================
-# SMART PII SCRUBBER
+# PII SCRUBBER
 # =====================================================
 
 def scrub_police_pii(text):
 
-    # ------------------------------------------------
-    # PERSON IDENTIFIERS
-    # ------------------------------------------------
+    # DOB
+    text = re.sub(r'\bDOB[: ]*\d{1,2}[/-]\d{1,2}[/-]\d{4}', '[DOB REDACTED]', text, flags=re.IGNORECASE)
+    text = re.sub(r'\b\d{1,2}[/-]\d{1,2}[/-]\d{4}', '[DOB REDACTED]', text)
 
-    text = re.sub(r'\bDOB[: ]*\d{1,2}[/-]\d{1,2}[/-]\d{4}\b',
-                  '[DOB REDACTED]', text, flags=re.IGNORECASE)
+    # SSN
+    text = re.sub(r'\b\d{3}-\d{2}-\d{4}', '[SSN REDACTED]', text)
 
-    text = re.sub(r'\b\d{1,2}[/-]\d{1,2}[/-]\d{4}\b',
-                  '[DOB REDACTED]', text)
+    # phone
+    text = re.sub(r'\b\d{3}[-.]?\d{3}[-.]?\d{4}', '[PHONE REDACTED]', text)
 
-    text = re.sub(r'\b\d{3}-\d{2}-\d{4}\b',
-                  '[SSN REDACTED]', text)
+    # VIN
+    text = re.sub(r'\b[A-HJ-NPR-Z0-9]{17}', '[VIN REDACTED]', text)
 
-    # ------------------------------------------------
-    # VEHICLE IDENTIFIERS
-    # ------------------------------------------------
+    # license plates
+    text = re.sub(r'\b[A-Z]{3}-?\d{3,4}', '[PLATE REDACTED]', text)
 
-    text = re.sub(r'\b[A-HJ-NPR-Z0-9]{17}\b',
-                  '[VIN REDACTED]', text)
+    # driver license
+    text = re.sub(r'\b[A-Z]\d{2}-\d{3}-\d{3}', '[DL REDACTED]', text)
 
-    text = re.sub(r'\b[A-Z]{3}-?\d{3,4}\b',
-                  '[PLATE REDACTED]', text)
+    # badge numbers
+    text = re.sub(r'Badge\s?#?\d+', '[BADGE REDACTED]', text, flags=re.IGNORECASE)
 
-    # ------------------------------------------------
-    # LICENSE NUMBERS
-    # ------------------------------------------------
-
-    text = re.sub(r'\b[A-Z]\d{2}-\d{3}-\d{3}\b',
-                  '[DL REDACTED]', text)
-
-    # ------------------------------------------------
-    # PHONE NUMBERS
-    # ------------------------------------------------
-
-    text = re.sub(r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b',
-                  '[PHONE REDACTED]', text)
-
-    # ------------------------------------------------
-    # ADDRESS
-    # ------------------------------------------------
-
+    # addresses
     text = re.sub(
-        r'\b\d{1,5}\s[A-Za-z]+\s(?:Street|St|Road|Rd|Ave|Avenue|Blvd|Lane|Ln|Drive|Dr|Court|Ct)\b',
+        r'\b\d{1,5}\s[A-Za-z]+\s(?:Street|St|Road|Rd|Ave|Avenue|Blvd|Lane|Ln|Drive|Dr|Court|Ct)',
         '[ADDRESS REDACTED]',
         text
     )
 
-    text = re.sub(r'\bApt\.?\s?\w+\b',
-                  '[APT REDACTED]', text)
+    text = re.sub(r'\bApt\.?\s?\w+', '[APT REDACTED]', text)
 
-    # ------------------------------------------------
-    # AGENCY IDENTIFIERS
-    # ------------------------------------------------
+    # names with middle initial
+    text = re.sub(
+        r'\b[A-Z][a-z]+\s[A-Z]\.\s[A-Z][a-z]+',
+        '[NAME REDACTED]',
+        text
+    )
 
-    text = re.sub(r'\bBadge\s?#?\d+\b',
-                  '[BADGE REDACTED]', text, flags=re.IGNORECASE)
-
-    text = re.sub(r'\bUnit\s?#?\d+\b',
-                  '[UNIT REDACTED]', text, flags=re.IGNORECASE)
-
-    text = re.sub(r'\bCase\s?#?\d+\b',
-                  '[CASE REDACTED]', text, flags=re.IGNORECASE)
-
-    # ------------------------------------------------
-    # ROLE-BASED NAME REDACTION
-    # ------------------------------------------------
-
-    roles = [
-        "driver",
-        "suspect",
-        "subject",
-        "victim",
-        "witness",
-        "officer",
-        "deputy",
-        "passenger"
-    ]
+    # role based names
+    roles = ["driver","subject","suspect","victim","witness","officer","deputy"]
 
     for role in roles:
-
         text = re.sub(
-            rf"\b{role}\s+[A-Z][a-z]+\s?[A-Z]?[a-z]*\b",
+            rf"\b{role}\s+[A-Z][a-z]+(?:\s[A-Z][a-z]+)?",
             f"{role} [NAME REDACTED]",
             text,
             flags=re.IGNORECASE
         )
 
-    # ------------------------------------------------
-    # NAME AFTER IDENTIFIER
-    # ------------------------------------------------
-
+    # colon identifiers
     text = re.sub(
-        r'identified by license as\s+[A-Z][a-z]+\s[A-Z][a-z]+',
-        'identified by license as [NAME REDACTED]',
+        r'(subject|suspect|driver|victim|witness)\s*:\s*[A-Z][a-z]+\s?[A-Z]?\.\s?[A-Z][a-z]+',
+        r'\1: [NAME REDACTED]',
         text,
         flags=re.IGNORECASE
     )
 
+    # residual first last names
+    text = re.sub(
+        r'\b[A-Z][a-z]+\s[A-Z][a-z]+',
+        '[NAME REDACTED]',
+        text
+    )
+
     return text
+
+
+# =====================================================
+# PII DETECTION REPORT
+# =====================================================
+
+def detect_pii(text):
+
+    report = {}
+
+    report["DOB"] = len(re.findall(r'\d{1,2}[/-]\d{1,2}[/-]\d{4}', text))
+    report["Plates"] = len(re.findall(r'[A-Z]{3}-?\d{3,4}', text))
+    report["VIN"] = len(re.findall(r'[A-HJ-NPR-Z0-9]{17}', text))
+    report["Phones"] = len(re.findall(r'\d{3}[-.]?\d{3}[-.]?\d{4}', text))
+    report["Addresses"] = len(re.findall(r'\d{1,5}\s[A-Za-z]+\s(?:Street|St|Road|Rd|Ave)', text))
+
+    return report
+
 
 # =====================================================
 # TABS
@@ -188,7 +168,7 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "Report Review",
     "Defense Review",
     "Crash Reconstruction",
-    "Scene Diagrams"
+    "Scene Diagram"
 ])
 
 # =====================================================
@@ -197,16 +177,22 @@ tab1, tab2, tab3, tab4 = st.tabs([
 
 with tab1:
 
-    st.header("📝 Police Report Review")
+    st.header("Police Report Review")
 
     report = st.text_area("Paste Report", height=300)
 
     if st.button("Analyze Report"):
 
         if report.strip() == "":
-            st.warning("Please paste a report")
+            st.warning("Paste a report first")
 
         else:
+
+            detection = detect_pii(report)
+
+            st.subheader("PII Detection Summary")
+
+            st.write(detection)
 
             clean = scrub_police_pii(report)
 
@@ -223,31 +209,37 @@ with tab1:
 You are a senior police supervisor reviewing a report.
 
 Identify:
+
 • articulation weaknesses
 • missing investigative steps
-• timeline problems
+• timeline gaps
 • probable cause issues
 
 REPORT:
 {clean}
 """
 
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    messages=[{"role":"user","content":prompt}]
-                )
+                try:
 
-                st.write(response.choices[0].message.content)
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[{"role":"user","content":prompt}]
+                    )
+
+                    st.write(response.choices[0].message.content)
+
+                except:
+                    st.error("AI request failed")
 
 # =====================================================
-# DEFENSE ATTORNEY REVIEW
+# DEFENSE REVIEW
 # =====================================================
 
 with tab2:
 
-    st.header("⚖️ Defense Attorney Analysis")
+    st.header("Defense Attorney Review")
 
-    defense = st.text_area("Paste Report for Defense Review")
+    defense = st.text_area("Paste Report")
 
     if st.button("Run Defense Analysis"):
 
@@ -260,22 +252,22 @@ with tab2:
 
             if secure_mode:
 
-                st.warning("Secure Mode enabled — AI analysis disabled")
+                st.warning("Secure Mode enabled — AI analysis blocked")
 
             else:
 
                 prompt = f"""
 You are a criminal defense attorney reviewing a police report.
 
-Identify possible weaknesses such as:
+Identify possible weaknesses:
 
-• probable cause challenges
+• probable cause issues
 • reasonable suspicion issues
-• articulation weaknesses
-• missing evidence
+• articulation problems
+• missing observations
 • timeline inconsistencies
 
-Explain how the defense could challenge the report.
+Explain how a defense attorney would challenge the report.
 
 REPORT:
 {clean}
@@ -294,7 +286,7 @@ REPORT:
 
 with tab3:
 
-    st.header("🚔 Crash Reconstruction")
+    st.header("Crash Reconstruction Tools")
 
     drag = st.number_input("Drag Factor", value=0.70)
     skid = st.number_input("Skid Distance (ft)", value=100.0)
@@ -302,28 +294,8 @@ with tab3:
     if st.button("Calculate Speed"):
 
         speed = math.sqrt(30 * drag * skid)
+
         st.success(f"Estimated Speed: {speed:.2f} mph")
-
-    st.subheader("Delta-V")
-
-    v1 = st.number_input("Vehicle 1 Speed", value=40.0)
-    v2 = st.number_input("Vehicle 2 Speed", value=0.0)
-
-    w1 = st.number_input("Vehicle 1 Weight", value=4000.0)
-    w2 = st.number_input("Vehicle 2 Weight", value=4000.0)
-
-    if st.button("Calculate Delta-V"):
-
-        v1fps = v1 * 1.47
-        v2fps = v2 * 1.47
-
-        total = w1 + w2
-
-        dv1 = abs((w2*(v2fps-v1fps))/total)/1.47
-        dv2 = abs((w1*(v1fps-v2fps))/total)/1.47
-
-        st.success(f"Vehicle 1 ΔV: {dv1:.2f} mph")
-        st.success(f"Vehicle 2 ΔV: {dv2:.2f} mph")
 
 # =====================================================
 # SCENE DIAGRAM
@@ -331,7 +303,7 @@ with tab3:
 
 with tab4:
 
-    st.header("🗺 Crash Scene Diagram")
+    st.header("Crash Scene Diagram")
 
     lane = st.number_input("Lane Width", value=12.0)
 
@@ -369,5 +341,3 @@ with tab4:
         ax.grid(True)
 
         st.pyplot(fig)
-
-
