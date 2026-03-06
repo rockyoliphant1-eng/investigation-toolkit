@@ -80,49 +80,87 @@ if not secure_mode:
 
 def scrub_police_pii(text):
 
-    roles = [
-        "driver","suspect","subject","victim",
-        "witness","passenger","officer","deputy"
-    ]
+    # -------------------------------------------------
+    # PERSON IDENTIFIERS
+    # -------------------------------------------------
 
-    for role in roles:
-        pattern = rf"\b{role}\s+[A-Za-z]+\s?[A-Za-z]*\b"
-        text = re.sub(pattern, f"{role} [NAME REDACTED]", text, flags=re.IGNORECASE)
+    # Date of birth
+    text = re.sub(r'\bDOB[: ]*\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b', '[DOB REDACTED]', text, flags=re.IGNORECASE)
 
-    # titles
-    titles = ["mr","mrs","ms"]
+    # standalone DOB patterns
+    text = re.sub(r'\b\d{1,2}[/-]\d{1,2}[/-]\d{4}\b', '[DOB REDACTED]', text)
 
-    for title in titles:
-        pattern = rf"\b{title}\s+[A-Za-z]+\b"
-        text = re.sub(pattern, f"{title} [NAME REDACTED]", text, flags=re.IGNORECASE)
-
-    # phone numbers
-    text = re.sub(r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b', '[PHONE REDACTED]', text)
+    # driver license numbers
+    text = re.sub(r'\b[A-Z]{1,2}-?\d{3}-?\d{3}-?\d{3}\b', '[DL REDACTED]', text)
 
     # SSN
     text = re.sub(r'\b\d{3}-\d{2}-\d{4}\b', '[SSN REDACTED]', text)
 
+    # -------------------------------------------------
+    # VEHICLE IDENTIFIERS
+    # -------------------------------------------------
+
     # VIN
     text = re.sub(r'\b[A-HJ-NPR-Z0-9]{17}\b', '[VIN REDACTED]', text)
 
-    # plates
-    text = re.sub(r'\b[A-Z]{1,3}[0-9]{1,4}\b', '[PLATE REDACTED]', text)
+    # license plates
+    text = re.sub(r'\b[A-Z]{3}-?\d{3,4}\b', '[PLATE REDACTED]', text)
 
-    # addresses
+    # -------------------------------------------------
+    # CONTACT INFO
+    # -------------------------------------------------
+
+    # phone numbers
+    text = re.sub(r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b', '[PHONE REDACTED]', text)
+
+    # email
+    text = re.sub(r'\S+@\S+\.\S+', '[EMAIL REDACTED]', text)
+
+    # -------------------------------------------------
+    # LOCATION
+    # -------------------------------------------------
+
     text = re.sub(
         r'\b\d{1,5}\s[A-Za-z]+\s(?:Street|St|Road|Rd|Ave|Avenue|Blvd|Lane|Ln|Drive|Dr|Court|Ct)\b',
         '[ADDRESS REDACTED]',
         text
     )
 
-    # case numbers
-    text = re.sub(r'\bcase\s?\d+\b', '[CASE REDACTED]', text, flags=re.IGNORECASE)
+    text = re.sub(r'\bApt\.?\s?\w+\b', '[APT REDACTED]', text)
 
-    # clean spacing
-    text = re.sub(r'\s+', ' ', text)
+    # -------------------------------------------------
+    # AGENCY IDENTIFIERS
+    # -------------------------------------------------
+
+    text = re.sub(r'\bBadge\s?#?\d+\b', '[BADGE REDACTED]', text, flags=re.IGNORECASE)
+
+    text = re.sub(r'\bUnit\s?#?\d+\b', '[UNIT REDACTED]', text, flags=re.IGNORECASE)
+
+    text = re.sub(r'\bCase\s?#?\d+\b', '[CASE REDACTED]', text, flags=re.IGNORECASE)
+
+    # -------------------------------------------------
+    # NAME REDACTION
+    # -------------------------------------------------
+
+    roles = [
+        "driver","suspect","subject","victim","witness","passenger","officer"
+    ]
+
+    for role in roles:
+        text = re.sub(
+            rf"\b{role}\s+[A-Z][a-z]+\s?[A-Z]?[a-z]*\b",
+            f"{role} [NAME REDACTED]",
+            text
+        , flags=re.IGNORECASE)
+
+    # residual names (Firstname Lastname)
+    text = re.sub(
+        r'\b[A-Z][a-z]+\s[A-Z][a-z]+\b',
+        '[NAME REDACTED]',
+        text
+    )
 
     return text
-
 
 # =====================================================
 # TABS
@@ -313,3 +351,4 @@ with tab4:
         ax.grid(True)
 
         st.pyplot(fig)
+
