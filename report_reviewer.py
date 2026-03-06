@@ -3,55 +3,11 @@ from openai import OpenAI
 import math
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-
 import re
 
-def scrub_police_pii(text):
-
-    # Names (Firstname Lastname)
-    text = re.sub(r'\b[A-Z][a-z]+ [A-Z][a-z]+\b', '[NAME REDACTED]', text)
-
-    # Date of Birth
-    text = re.sub(r'\bDOB[: ]*\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b', '[DOB REDACTED]', text)
-    text = re.sub(r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b', '[DATE REDACTED]', text)
-
-    # Social Security Numbers
-    text = re.sub(r'\b\d{3}-\d{2}-\d{4}\b', '[SSN REDACTED]', text)
-
-    # Phone Numbers
-    text = re.sub(r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b', '[PHONE REDACTED]', text)
-
-    # Email
-    text = re.sub(r'\b[\w\.-]+@[\w\.-]+\.\w+\b', '[EMAIL REDACTED]', text)
-
-    # VIN Numbers (17 characters)
-    text = re.sub(r'\b[A-HJ-NPR-Z0-9]{17}\b', '[VIN REDACTED]', text)
-
-    # Driver License Numbers
-    text = re.sub(r'\bDL[: ]*[A-Z0-9]{5,15}\b', '[DL REDACTED]', text)
-
-    # License Plates (common pattern)
-    text = re.sub(r'\b[A-Z]{1,3}[0-9]{1,4}\b', '[PLATE REDACTED]', text)
-
-    # Addresses
-    text = re.sub(
-        r'\b\d{1,5}\s[A-Za-z0-9\s]+\s(?:Street|St|Road|Rd|Ave|Avenue|Blvd|Lane|Ln|Drive|Dr|Court|Ct)\b',
-        '[ADDRESS REDACTED]',
-        text
-    )
-
-    # Case Numbers
-    text = re.sub(r'\bCase[: ]*\d{2,6}-?\d{2,6}\b', '[CASE NUMBER REDACTED]', text)
-
-    # GPS Coordinates
-    text = re.sub(r'\b-?\d{1,3}\.\d+,\s?-?\d{1,3}\.\d+\b', '[GPS REDACTED]', text)
-
-    return text
-# -----------------------------
+# ==========================================================
 # CONFIG
-# -----------------------------
-
-client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+# ==========================================================
 
 st.set_page_config(
     page_title="LE Investigative Toolkit",
@@ -59,184 +15,221 @@ st.set_page_config(
 )
 
 st.title("Law Enforcement Investigation Toolkit")
-st.write("AI-powered report review and crash reconstruction tools.")
 
-# -----------------------------
+st.warning("Secure Mode prevents reports from being sent to external AI systems.")
+
+secure_mode = st.toggle("Secure Mode (Block external AI)", value=True)
+
+if not secure_mode:
+    client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+
+# ==========================================================
+# LAW ENFORCEMENT PII SCRUBBER
+# ==========================================================
+
+def scrub_police_pii(text):
+
+    text = re.sub(r'\b[A-Z][a-z]+ [A-Z][a-z]+\b', '[NAME REDACTED]', text)
+
+    text = re.sub(r'\bDOB[: ]*\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b', '[DOB REDACTED]', text)
+    text = re.sub(r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b', '[DATE REDACTED]', text)
+
+    text = re.sub(r'\b\d{3}-\d{2}-\d{4}\b', '[SSN REDACTED]', text)
+
+    text = re.sub(r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b', '[PHONE REDACTED]', text)
+
+    text = re.sub(r'\b[A-HJ-NPR-Z0-9]{17}\b', '[VIN REDACTED]', text)
+
+    text = re.sub(r'\b[A-Z]{1,3}[0-9]{1,4}\b', '[PLATE REDACTED]', text)
+
+    text = re.sub(
+        r'\b\d{1,5}\s[A-Za-z0-9\s]+\s(?:Street|St|Road|Rd|Ave|Avenue|Blvd|Lane|Ln|Drive|Dr|Court|Ct)\b',
+        '[ADDRESS REDACTED]',
+        text
+    )
+
+    text = re.sub(r'\bCase[: ]*\d{2,6}-?\d{2,6}\b', '[CASE NUMBER REDACTED]', text)
+
+    return text
+
+
+# ==========================================================
 # TABS
-# -----------------------------
+# ==========================================================
 
 tab1, tab2, tab3, tab4 = st.tabs([
     "Report Review",
+    "Defense Attorney Review",
     "Crash Reconstruction",
-    "Scene Diagrams",
-    "AI Investigation Assistant"
+    "Scene Diagrams"
 ])
 
-# =====================================================
-# TAB 1 — REPORT REVIEW
-# =====================================================
+# ==========================================================
+# REPORT REVIEW
+# ==========================================================
 
 with tab1:
 
-    st.header("AI Police Report Reviewer")
+    st.header("Police Report Review")
 
-    report_text = st.text_area("Paste Police Report", height=300)
+    report_text = st.text_area("Paste Report", height=300)
 
-    if st.button("Review Report"):
+    if st.button("Analyze Report"):
 
         if report_text.strip() == "":
-            st.warning("Please paste a report first.")
+            st.warning("Please paste a report first")
 
         else:
 
-            prompt = f"""
-You are a senior law enforcement supervisor reviewing an officer report.
+            clean_report = scrub_police_pii(report_text)
 
-Check for:
+            with st.expander("Sanitized Report (PII Removed)"):
+                st.write(clean_report)
 
-• grammar and clarity
+            if secure_mode:
+
+                st.success("Secure Mode Enabled — Report NOT sent to AI")
+
+                st.info("Use sanitized preview above for manual review.")
+
+            else:
+
+                prompt = f"""
+You are a senior police supervisor reviewing a report.
+
+Identify:
+
+• articulation weaknesses
 • missing investigative details
-• weak articulation
 • timeline issues
-• reasonable suspicion articulation
-• probable cause articulation
-
-Provide:
-
-SUMMARY
-
-ISSUES FOUND
-
-MISSING DETAILS
-
-LEGAL REVIEW
-
-SUGGESTED IMPROVEMENTS
-
-SUPERVISOR COMMENTS
-
-REPORT QUALITY SCORE
+• probable cause issues
 
 REPORT:
-{report_text}
+{clean_report}
 """
 
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[{"role":"user","content":prompt}]
-            )
+                try:
 
-            st.subheader("Review Results")
-            st.write(response.choices[0].message.content)
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[{"role":"user","content":prompt}]
+                    )
 
-# =====================================================
-# TAB 2 — CRASH RECONSTRUCTION
-# =====================================================
+                    st.write(response.choices[0].message.content)
+
+                except Exception:
+
+                    st.error("AI request failed")
+
+# ==========================================================
+# DEFENSE ATTORNEY REVIEW
+# ==========================================================
 
 with tab2:
 
+    st.header("Defense Attorney Review Mode")
+
+    report_text_defense = st.text_area("Paste Report for Defense Analysis")
+
+    if st.button("Run Defense Review"):
+
+        if report_text_defense.strip() == "":
+            st.warning("Paste a report")
+
+        else:
+
+            clean_report = scrub_police_pii(report_text_defense)
+
+            if secure_mode:
+
+                st.warning("Secure Mode enabled. Defense analysis requires AI access.")
+
+            else:
+
+                prompt = f"""
+You are a criminal defense attorney reviewing a police report.
+
+Identify potential legal weaknesses such as:
+
+• probable cause challenges
+• reasonable suspicion issues
+• timeline inconsistencies
+• missing officer observations
+• articulation problems
+
+Explain how a defense attorney might attack the report.
+
+REPORT:
+{clean_report}
+"""
+
+                try:
+
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[{"role":"user","content":prompt}]
+                    )
+
+                    st.write(response.choices[0].message.content)
+
+                except Exception:
+
+                    st.error("AI request failed")
+
+
+# ==========================================================
+# CRASH RECONSTRUCTION
+# ==========================================================
+
+with tab3:
+
     st.header("Crash Reconstruction Calculators")
 
-    st.subheader("Speed From Skid Marks")
-
-    drag_factor = st.number_input("Drag Factor", value=0.70)
+    drag_factor = st.number_input("Drag Factor", value=0.7)
     skid_distance = st.number_input("Skid Distance (ft)", value=100.0)
 
-    if st.button("Calculate Skid Speed"):
+    if st.button("Calculate Speed"):
 
         speed = math.sqrt(30 * drag_factor * skid_distance)
+
         st.success(f"Estimated Speed: {speed:.2f} mph")
-
-    st.divider()
-
-    st.subheader("Stopping Distance")
-
-    speed_mph = st.number_input("Vehicle Speed (mph)", value=50.0)
-    reaction_time = st.number_input("Reaction Time (seconds)", value=1.5)
-
-    if st.button("Calculate Stopping Distance"):
-
-        speed_fps = speed_mph * 1.47
-        reaction_distance = speed_fps * reaction_time
-        braking_distance = (speed_mph ** 2) / (30 * drag_factor)
-
-        total = reaction_distance + braking_distance
-
-        st.success(f"Reaction Distance: {reaction_distance:.1f} ft")
-        st.success(f"Braking Distance: {braking_distance:.1f} ft")
-        st.success(f"Total Distance: {total:.1f} ft")
-
-    st.divider()
-
-    st.subheader("Yaw Speed Calculator")
-
-    yaw_radius = st.number_input("Yaw Radius (ft)", value=100.0)
-    yaw_drag = st.number_input("Yaw Drag Factor", value=0.75)
-
-    if st.button("Calculate Yaw Speed"):
-
-        yaw_speed = math.sqrt(15 * yaw_radius * yaw_drag)
-        st.success(f"Estimated Speed: {yaw_speed:.2f} mph")
-
-    st.divider()
 
     st.subheader("Delta-V Estimate")
 
-    v1 = st.number_input("Vehicle 1 Speed (mph)", value=40.0)
-    v2 = st.number_input("Vehicle 2 Speed (mph)", value=0.0)
+    v1 = st.number_input("Vehicle 1 Speed", value=40.0)
+    v2 = st.number_input("Vehicle 2 Speed", value=0.0)
 
-    w1 = st.number_input("Vehicle 1 Weight (lbs)", value=4000.0)
-    w2 = st.number_input("Vehicle 2 Weight (lbs)", value=4000.0)
+    w1 = st.number_input("Vehicle 1 Weight", value=4000.0)
+    w2 = st.number_input("Vehicle 2 Weight", value=4000.0)
 
-    if st.button("Calculate Delta-V"):
+    if st.button("Calculate Delta V"):
 
         v1_fps = v1 * 1.47
         v2_fps = v2 * 1.47
 
         total_mass = w1 + w2
 
-        delta_v1 = abs((w2 * (v2_fps - v1_fps)) / total_mass) / 1.47
-        delta_v2 = abs((w1 * (v1_fps - v2_fps)) / total_mass) / 1.47
+        dv1 = abs((w2 * (v2_fps - v1_fps)) / total_mass) / 1.47
+        dv2 = abs((w1 * (v1_fps - v2_fps)) / total_mass) / 1.47
 
-        st.success(f"Vehicle 1 Delta-V: {delta_v1:.2f} mph")
-        st.success(f"Vehicle 2 Delta-V: {delta_v2:.2f} mph")
+        st.success(f"Vehicle 1 Delta-V: {dv1:.2f} mph")
+        st.success(f"Vehicle 2 Delta-V: {dv2:.2f} mph")
 
-    st.divider()
+# ==========================================================
+# SCENE DIAGRAM
+# ==========================================================
 
-    st.subheader("Drag Factor Reference")
+with tab4:
 
-    surface = st.selectbox(
-        "Road Surface",
-        ["Dry Asphalt","Wet Asphalt","Dry Concrete","Wet Concrete","Gravel","Snow","Ice"]
-    )
+    st.header("Crash Scene Diagram")
 
-    drag_values = {
-        "Dry Asphalt":0.70,
-        "Wet Asphalt":0.60,
-        "Dry Concrete":0.80,
-        "Wet Concrete":0.70,
-        "Gravel":0.50,
-        "Snow":0.30,
-        "Ice":0.10
-    }
+    lane_width = st.number_input("Lane Width", value=12.0)
 
-    st.info(f"Typical Drag Factor: {drag_values[surface]}")
+    v1x = st.number_input("Vehicle 1 X", value=0.0)
+    v1y = st.number_input("Vehicle 1 Y", value=0.0)
 
-# =====================================================
-# TAB 3 — SCENE DIAGRAMS
-# =====================================================
-
-with tab3:
-
-    st.header("Crash Scene Diagram Generator")
-
-    lane_width = st.number_input("Lane Width (ft)", value=12.0)
-
-    v1_x = st.number_input("Vehicle 1 X Position", value=0.0)
-    v1_y = st.number_input("Vehicle 1 Y Position", value=0.0)
-
-    v2_x = st.number_input("Vehicle 2 X Position", value=40.0)
-    v2_y = st.number_input("Vehicle 2 Y Position", value=0.0)
+    v2x = st.number_input("Vehicle 2 X", value=40.0)
+    v2y = st.number_input("Vehicle 2 Y", value=0.0)
 
     if st.button("Generate Diagram"):
 
@@ -252,52 +245,17 @@ with tab3:
 
         ax.add_patch(road)
 
-        vehicle1 = patches.Rectangle((v1_x,v1_y),15,6,color='blue')
-        vehicle2 = patches.Rectangle((v2_x,v2_y),15,6,color='red')
+        car1 = patches.Rectangle((v1x,v1y),15,6,color='blue')
+        car2 = patches.Rectangle((v2x,v2y),15,6,color='red')
 
-        ax.add_patch(vehicle1)
-        ax.add_patch(vehicle2)
+        ax.add_patch(car1)
+        ax.add_patch(car2)
 
         ax.set_xlim(-100,100)
         ax.set_ylim(-50,50)
 
-        ax.set_title("Crash Scene Diagram (Top View)")
+        ax.set_title("Crash Scene Diagram")
+
         ax.grid(True)
 
         st.pyplot(fig)
-
-# =====================================================
-# TAB 4 — AI INVESTIGATION ASSISTANT
-# =====================================================
-
-with tab4:
-
-    st.header("AI Crash Reconstruction Assistant")
-
-    notes = st.text_area("Enter Investigation Notes")
-
-    if st.button("Analyze Investigation"):
-
-        prompt = f"""
-You are a professional traffic collision reconstructionist.
-
-Analyze the notes and provide:
-
-• possible collision sequence
-• speed considerations
-• missing investigative evidence
-• weaknesses in documentation
-• recommended reconstruction steps
-
-NOTES:
-{notes}
-"""
-
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role":"user","content":prompt}]
-        )
-
-
-        st.write(response.choices[0].message.content)
-
