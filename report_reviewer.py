@@ -4,6 +4,49 @@ import math
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
+import re
+
+def scrub_police_pii(text):
+
+    # Names (Firstname Lastname)
+    text = re.sub(r'\b[A-Z][a-z]+ [A-Z][a-z]+\b', '[NAME REDACTED]', text)
+
+    # Date of Birth
+    text = re.sub(r'\bDOB[: ]*\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b', '[DOB REDACTED]', text)
+    text = re.sub(r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b', '[DATE REDACTED]', text)
+
+    # Social Security Numbers
+    text = re.sub(r'\b\d{3}-\d{2}-\d{4}\b', '[SSN REDACTED]', text)
+
+    # Phone Numbers
+    text = re.sub(r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b', '[PHONE REDACTED]', text)
+
+    # Email
+    text = re.sub(r'\b[\w\.-]+@[\w\.-]+\.\w+\b', '[EMAIL REDACTED]', text)
+
+    # VIN Numbers (17 characters)
+    text = re.sub(r'\b[A-HJ-NPR-Z0-9]{17}\b', '[VIN REDACTED]', text)
+
+    # Driver License Numbers
+    text = re.sub(r'\bDL[: ]*[A-Z0-9]{5,15}\b', '[DL REDACTED]', text)
+
+    # License Plates (common pattern)
+    text = re.sub(r'\b[A-Z]{1,3}[0-9]{1,4}\b', '[PLATE REDACTED]', text)
+
+    # Addresses
+    text = re.sub(
+        r'\b\d{1,5}\s[A-Za-z0-9\s]+\s(?:Street|St|Road|Rd|Ave|Avenue|Blvd|Lane|Ln|Drive|Dr|Court|Ct)\b',
+        '[ADDRESS REDACTED]',
+        text
+    )
+
+    # Case Numbers
+    text = re.sub(r'\bCase[: ]*\d{2,6}-?\d{2,6}\b', '[CASE NUMBER REDACTED]', text)
+
+    # GPS Coordinates
+    text = re.sub(r'\b-?\d{1,3}\.\d+,\s?-?\d{1,3}\.\d+\b', '[GPS REDACTED]', text)
+
+    return text
 # -----------------------------
 # CONFIG
 # -----------------------------
@@ -257,3 +300,4 @@ NOTES:
 
 
         st.write(response.choices[0].message.content)
+
