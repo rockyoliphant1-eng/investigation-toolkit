@@ -80,45 +80,46 @@ if not secure_mode:
 
 def scrub_police_pii(text):
 
-    # -------------------------------------------------
+    # ------------------------------------------------
     # PERSON IDENTIFIERS
-    # -------------------------------------------------
+    # ------------------------------------------------
 
-    # Date of birth
-    text = re.sub(r'\bDOB[: ]*\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b', '[DOB REDACTED]', text, flags=re.IGNORECASE)
+    text = re.sub(r'\bDOB[: ]*\d{1,2}[/-]\d{1,2}[/-]\d{4}\b',
+                  '[DOB REDACTED]', text, flags=re.IGNORECASE)
 
-    # standalone DOB patterns
-    text = re.sub(r'\b\d{1,2}[/-]\d{1,2}[/-]\d{4}\b', '[DOB REDACTED]', text)
+    text = re.sub(r'\b\d{1,2}[/-]\d{1,2}[/-]\d{4}\b',
+                  '[DOB REDACTED]', text)
 
-    # driver license numbers
-    text = re.sub(r'\b[A-Z]{1,2}-?\d{3}-?\d{3}-?\d{3}\b', '[DL REDACTED]', text)
+    text = re.sub(r'\b\d{3}-\d{2}-\d{4}\b',
+                  '[SSN REDACTED]', text)
 
-    # SSN
-    text = re.sub(r'\b\d{3}-\d{2}-\d{4}\b', '[SSN REDACTED]', text)
-
-    # -------------------------------------------------
+    # ------------------------------------------------
     # VEHICLE IDENTIFIERS
-    # -------------------------------------------------
+    # ------------------------------------------------
 
-    # VIN
-    text = re.sub(r'\b[A-HJ-NPR-Z0-9]{17}\b', '[VIN REDACTED]', text)
+    text = re.sub(r'\b[A-HJ-NPR-Z0-9]{17}\b',
+                  '[VIN REDACTED]', text)
 
-    # license plates
-    text = re.sub(r'\b[A-Z]{3}-?\d{3,4}\b', '[PLATE REDACTED]', text)
+    text = re.sub(r'\b[A-Z]{3}-?\d{3,4}\b',
+                  '[PLATE REDACTED]', text)
 
-    # -------------------------------------------------
-    # CONTACT INFO
-    # -------------------------------------------------
+    # ------------------------------------------------
+    # LICENSE NUMBERS
+    # ------------------------------------------------
 
-    # phone numbers
-    text = re.sub(r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b', '[PHONE REDACTED]', text)
+    text = re.sub(r'\b[A-Z]\d{2}-\d{3}-\d{3}\b',
+                  '[DL REDACTED]', text)
 
-    # email
-    text = re.sub(r'\S+@\S+\.\S+', '[EMAIL REDACTED]', text)
+    # ------------------------------------------------
+    # PHONE NUMBERS
+    # ------------------------------------------------
 
-    # -------------------------------------------------
-    # LOCATION
-    # -------------------------------------------------
+    text = re.sub(r'\b\d{3}[-.]?\d{3}[-.]?\d{4}\b',
+                  '[PHONE REDACTED]', text)
+
+    # ------------------------------------------------
+    # ADDRESS
+    # ------------------------------------------------
 
     text = re.sub(
         r'\b\d{1,5}\s[A-Za-z]+\s(?:Street|St|Road|Rd|Ave|Avenue|Blvd|Lane|Ln|Drive|Dr|Court|Ct)\b',
@@ -126,38 +127,55 @@ def scrub_police_pii(text):
         text
     )
 
-    text = re.sub(r'\bApt\.?\s?\w+\b', '[APT REDACTED]', text)
+    text = re.sub(r'\bApt\.?\s?\w+\b',
+                  '[APT REDACTED]', text)
 
-    # -------------------------------------------------
+    # ------------------------------------------------
     # AGENCY IDENTIFIERS
-    # -------------------------------------------------
+    # ------------------------------------------------
 
-    text = re.sub(r'\bBadge\s?#?\d+\b', '[BADGE REDACTED]', text, flags=re.IGNORECASE)
+    text = re.sub(r'\bBadge\s?#?\d+\b',
+                  '[BADGE REDACTED]', text, flags=re.IGNORECASE)
 
-    text = re.sub(r'\bUnit\s?#?\d+\b', '[UNIT REDACTED]', text, flags=re.IGNORECASE)
+    text = re.sub(r'\bUnit\s?#?\d+\b',
+                  '[UNIT REDACTED]', text, flags=re.IGNORECASE)
 
-    text = re.sub(r'\bCase\s?#?\d+\b', '[CASE REDACTED]', text, flags=re.IGNORECASE)
+    text = re.sub(r'\bCase\s?#?\d+\b',
+                  '[CASE REDACTED]', text, flags=re.IGNORECASE)
 
-    # -------------------------------------------------
-    # NAME REDACTION
-    # -------------------------------------------------
+    # ------------------------------------------------
+    # ROLE-BASED NAME REDACTION
+    # ------------------------------------------------
 
     roles = [
-        "driver","suspect","subject","victim","witness","passenger","officer"
+        "driver",
+        "suspect",
+        "subject",
+        "victim",
+        "witness",
+        "officer",
+        "deputy",
+        "passenger"
     ]
 
     for role in roles:
+
         text = re.sub(
             rf"\b{role}\s+[A-Z][a-z]+\s?[A-Z]?[a-z]*\b",
             f"{role} [NAME REDACTED]",
-            text
-        , flags=re.IGNORECASE)
+            text,
+            flags=re.IGNORECASE
+        )
 
-    # residual names (Firstname Lastname)
+    # ------------------------------------------------
+    # NAME AFTER IDENTIFIER
+    # ------------------------------------------------
+
     text = re.sub(
-        r'\b[A-Z][a-z]+\s[A-Z][a-z]+\b',
-        '[NAME REDACTED]',
-        text
+        r'identified by license as\s+[A-Z][a-z]+\s[A-Z][a-z]+',
+        'identified by license as [NAME REDACTED]',
+        text,
+        flags=re.IGNORECASE
     )
 
     return text
@@ -351,4 +369,5 @@ with tab4:
         ax.grid(True)
 
         st.pyplot(fig)
+
 
