@@ -2,121 +2,150 @@ import streamlit as st
 import random
 import time
 
-# Session state init
-if "score" not in st.session_state:
-    st.session_state.score = 0
-if "time_left" not in st.session_state:
-    st.session_state.time_left = 60
-if "game_running" not in st.session_state:
-    st.session_state.game_running = False
-if "cars" not in st.session_state:
-    st.session_state.cars = []  
-if "next_car_time" not in st.session_state:
-    st.session_state.next_car_time = time.time()
-if "message" not in st.session_state:
-    st.session_state.message = "Get your lazy ass ready, Trooper!"
+# Config for wide layout
+st.set_page_config(page_title="I-5 Speeder Hunter - Lt. Betts Edition", layout="wide")
 
-# Betts image
-BETTS_IMG = "https://thumbs.dreamstime.com/z/angry-army-bootcamp-drill-sergeant-soldier-pointing-viewer-shouting-cartoon-angry-army-bootcamp-drill-sergeant-245204815.jpg"
+# Session state initialization
+for key in ['score', 'wrong_stops', 'time_left', 'game_running', 'spots', 'next_id', 'last_update', 'message']:
+    if key not in st.session_state:
+        st.session_state[key] = 0 if key in ['score', 'wrong_stops', 'next_id', 'time_left'] else False if key == 'game_running' else {} if key == 'spots' else time.time() if key == 'last_update' else "Get ready to hunt speeders, maggot!"
 
-# SUPER OFFENSIVE, MEAN YELLS – drill sergeant style, heavy roasts
-betts_yells = [
+# Lt. Betts angry image (perfect cartoon yelling state trooper with campaign hat)
+BETTS_IMG = "https://media.istockphoto.com/id/1385108467/vector/angry-army-bootcamp-drill-sergeant-cartoon.jpg?s=612x612&w=0&k=20&c=3fGMt7aLzLa0uRGSZREujosQhE77PNWVKPpH6849GFo="
+
+# MAX spots on board
+MAX_SPOTS = 12
+SPEEDER_PROB = 0.6
+
+# Offensive general yells
+general_yells = [
     "CLICK THAT FUCKING SPEEDER YOU WORTHLESS PIECE OF SHIT!",
-    "YOU'RE SLOWER THAN A ONE-LEGGED DOG IN A RACE – MY DEAD GRANDMA MOVES FASTER!",
-    "I'VE WIPED SMARTER STAINS OFF MY BOOTS THAN YOU – CLICK OR QUIT!",
-    "THAT CAR'S HAULING ASS AND YOU'RE HAULING NOTHING – PULL IT OVER BEFORE I SHOVE YOUR BADGE UP YOURS!",
-    "QUOTA'S EMPTY AND YOUR HEAD'S EMPTIER – GET MOVING, YOU PATHETIC LOSER!",
-    "YOUR MOM MUST BE SO PROUD OF HER USELESS SPAWN – CLICK FASTER OR I'LL CALL HER TO COMPLAIN!",
-    "YOU CALL THIS PATROLLING? I CALL IT MASTURBATION WITH A BADGE – DO SOMETHING USEFUL!",
-    "IF YOU MISS ONE MORE, I'LL MAKE YOU LICK THE HIGHWAY CLEAN – STARTING WITH THE BUGS ON MY WINDSHIELD!",
-    "YOU'RE LETTING THEM ESCAPE? I'D RATHER HAVE A RETARDED MONKEY ON DUTY – AT LEAST IT'D TRY!",
-    "THIS IS I-5, NOT YOUR MOM'S BASEMENT – ENFORCE THE LAW OR I'LL ENFORCE MY FIST ON YOUR FACE!",
-    "YOUR REFLEXES SUCK SO BAD A BLIND TURTLE JUST PASSED YOU – CLICK NOW, ASSHOLE!",
-    "YOU'RE A DISGRACE TO THE BADGE – CLICK THOSE CARS OR I'LL MAKE YOU EAT YOUR NEXT TICKET BOOK!"
+    "YOU'RE SLOWER THAN A ONE-LEGGED DOG – MOVE YOUR ASS!",
+    "I'VE WIPED SMARTER STAINS OFF MY BOOTS THAN YOU!",
+    "PULL IT OVER BEFORE I SHOVE YOUR BADGE UP YOUR ASS!",
+    "QUOTA'S EMPTY AND YOUR BRAIN'S EMPTIER, LOSER!",
+    "YOUR MOM CALLED – SHE WANTS HER BASEMENT DWELLER BACK!",
+    "THIS IS PATROLLING? MORE LIKE JERKING OFF WITH A BADGE!",
+    "LICK THE HIGHWAY CLEAN IF YOU MISS AGAIN, MAGGOT!"
 ]
 
-st.set_page_config(page_title="I-5 Speed Catcher – Betts Edition", layout="wide")
+# SUPER OFFENSIVE WRONG CLICK YELLS (can't stop non-speeders)
+wrong_yells = [
+    "YOU CAN'T STOP NON-SPEEDERS, YOU FUCKING MORON! THAT WAS A MOM WITH KIDS!",
+    "LAW-ABIDING SCHOOL BUS? YOU DUMB SHIT, LET THEM GO!",
+    "CHURCH VAN FULL OF NUNS? BACK OFF YOU STUPID BASTARD!",
+    "FAMILY MINIVAN? YOU JUST PISSED OFF DAD – IDIOT!",
+    "AMBULANCE? YOU ALMOST KILLED SOMEONE, YOU RETARDED FUCK!",
+    "ICE CREAM TRUCK? KIDS ARE CRYING BECAUSE OF YOU, ASSHOLE!",
+    "PRIEST IN A SEDAN? GO TO HELL FOR THAT ONE, SINNER!",
+    "WEDDING LIMO? YOU RUINED THEIR DAY, YOU WORTHLESS PRICK!"
+]
 
-col_img, col_title = st.columns([1, 4])
-with col_img:
-    st.image(BETTS_IMG, width=180, caption="Lt. Scott Betts – About to Lose His Shit")
-with col_title:
-    st.title("🚔 I-5 SPEEDING CAR CATCHER – SURVIVE BETTS' RAGE!")
-    st.subheader("Click the damn cars before he has a stroke!")
+# Praise for correct (still offensive)
+praise_yells = [
+    "FINALLY, YOU GOT ONE – YOU LUCKY SHIT!",
+    "NOT BAD... FOR A BRAINDEAD MONKEY!",
+    "KEEP IT UP OR I'LL STILL FIRE YOUR ASS!",
+    "ONE LESS SPEEDER – NOW DO TEN MORE, LOSER!"
+]
 
-hud_col1, hud_col2, hud_col3 = st.columns(3)
-with hud_col1:
-    st.metric("SCORE", st.session_state.score)
-with hud_col2:
-    st.metric("TIME LEFT", f"{int(st.session_state.time_left)}s")
-with hud_col3:
-    if st.session_state.score > 0:
-        st.metric("CARS/SEC", f"{st.session_state.score / max(1, 60 - st.session_state.time_left):.1f}")
+st.title("🚔 I-5 SPEEDER HUNTER")
+st.subheader("Click 🚗? boxes to check for speeders! Wrong ones = Lt. Betts RAGES & time penalty!")
 
-st.error(f"**Lt. Betts ROARING at you:** {st.session_state.message}")  # Made it red/error for intensity
+# HUD
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.metric("STOPS", st.session_state.score)
+with col2:
+    st.metric("WRONGS", st.session_state.wrong_stops)
+with col3:
+    st.metric("TIME", f"{int(st.session_state.time_left)}s")
+with col4:
+    avg = st.session_state.score / max(1, 60 - st.session_state.time_left)
+    st.metric("RATE", f"{avg:.1f}/s")
 
-game_container = st.container()
-with game_container:
-    if st.session_state.game_running:
-        current_time = time.time()
-        if current_time - st.session_state.start_time >= 1:
-            st.session_state.time_left -= 1
-            st.session_state.start_time = current_time
-            if st.session_state.time_left <= 0:
-                st.session_state.game_running = False
-                st.balloons()
-                st.success(f"**ROUND OVER! Score: {st.session_state.score}** – Betts grunts: 'Not complete garbage... barely.'")
-                if st.button("Play Again – Don't Piss Him Off This Time"):
-                    st.session_state.score = 0
-                    st.session_state.time_left = 60
-                    st.session_state.cars = []
-                    st.session_state.game_running = True
-                    st.session_state.start_time = time.time()
-                    st.session_state.next_car_time = time.time() + 1.5
+# Betts yelling (red error style)
+st.error(f"**Lt. Betts ROARING:** {st.session_state.message}")
+
+# Betts image
+col_betts, _ = st.columns([1, 4])
+with col_betts:
+    st.image(BETTS_IMG, width=220, caption="Lt. Scott Betts - FURIOUS!")
+
+# Game logic
+if not st.session_state.game_running:
+    if st.button("🚨 START PATROL - HUNT SPEEDERS ON I-5! 🚨", type="primary", use_container_width=True):
+        st.session_state.game_running = True
+        st.session_state.score = 0
+        st.session_state.wrong_stops = 0
+        st.session_state.time_left = 60
+        st.session_state.spots = {}
+        st.session_state.next_id = 0
+        st.session_state.last_update = time.time()
+        st.session_state.message = random.choice(general_yells)
+        # Initial board populate
+        for _ in range(10):
+            spot_id = st.session_state.next_id
+            st.session_state.spots[spot_id] = random.random() < SPEEDER_PROB
+            st.session_state.next_id += 1
+        st.rerun()
+else:
+    # Timer and spawn
+    current_time = time.time()
+    if current_time - st.session_state.last_update >= 1.0:
+        st.session_state.time_left = max(0, st.session_state.time_left - 1)
+        st.session_state.last_update = current_time
+        # Spawn new spots to fill board
+        spots_to_add = min(2, MAX_SPOTS - len(st.session_state.spots))
+        for _ in range(spots_to_add):
+            spot_id = st.session_state.next_id
+            st.session_state.spots[spot_id] = random.random() < SPEEDER_PROB
+            st.session_state.next_id += 1
+        # Random yell pressure
+        if random.random() < 0.15:
+            st.session_state.message = random.choice(general_yells)
+        if st.session_state.time_left <= 0:
+            st.session_state.game_running = False
+            if st.session_state.score > 25:
+                st.session_state.message = "NOT BAD, TROOPER... YOU'RE NOT TOTALLY USELESS!"
+            else:
+                st.session_state.message = "PATHETIC! MY DOG WRITES BETTER TICKETS!"
+            st.balloons()
+            st.rerun()
+        st.rerun()
+
+    # Render interactive board - scattered grid
+    st.markdown("### **Hunt the Speeders Below!**")
+    spot_ids = list(st.session_state.spots.keys())
+    random.shuffle(spot_ids)  # Random positions each render
+    num_rows = (len(spot_ids) + 3) // 4
+    for row_start in range(0, len(spot_ids), 4):
+        row_ids = spot_ids[row_start:row_start + 4]
+        cols = st.columns(4)
+        for col_idx, spot_id in enumerate(row_ids):
+            with cols[col_idx]:
+                if st.button("🚗 ?\n**Check Speed!**", key=f"spot_{spot_id}", help="Pull over if speeding?", type="secondary"):
+                    is_speeder = st.session_state.spots.pop(spot_id)
+                    if is_speeder:
+                        st.session_state.score += 1
+                        st.session_state.message = random.choice(praise_yells)
+                        # Bonus spawn on success
+                        if len(st.session_state.spots) < MAX_SPOTS:
+                            new_id = st.session_state.next_id
+                            st.session_state.spots[new_id] = random.random() < SPEEDER_PROB
+                            st.session_state.next_id += 1
+                        st.success("🚨 SPEEDER PULLED OVER! +1")
+                    else:
+                        st.session_state.wrong_stops += 1
+                        st.session_state.time_left = max(0, st.session_state.time_left - 4)
+                        st.session_state.message = random.choice(wrong_yells)
+                        st.error("❌ NON-SPEEDER! -4s")
                     st.rerun()
 
-        spawn_rate = max(0.3, 2.0 - (st.session_state.score / 15))  
-        if current_time > st.session_state.next_car_time:
-            car_id = len(st.session_state.cars)
-            x = random.uniform(5, 95)
-            y = random.uniform(10, 85)
-            st.session_state.cars.append({"id": car_id, "x": x, "y": y})
-            st.session_state.next_car_time = current_time + random.uniform(spawn_rate - 0.4, spawn_rate + 0.6)
+    # Empty spots visual
+    if len(spot_ids) == 0:
+        st.warning("Board clear! More coming...")
 
-        for car in st.session_state.cars[:]:
-            car_emoji = random.choice(["🚗💨", "🏎️💨", "🚙💨", "🛻💨"])
-            if st.button(
-                car_emoji,
-                key=f"car_{car['id']}",
-                help="CLICK THIS BASTARD – SAVE YOUR JOB!",
-                type="primary"
-            ):
-                st.session_state.score += 1
-                st.session_state.cars.remove(car)
-                st.session_state.message = random.choice(betts_yells)
-                if st.session_state.score % 5 == 0:
-                    st.balloons()
-                st.rerun()
-
-        st.markdown(
-            "<div style='height: 450px; background: linear-gradient(to bottom, #228B22, #556B2F); border: 5px solid #FF4500; border-radius: 20px; display: flex; align-items: center; justify-content: center; color: #FFD700; font-size: 28px; font-weight: bold; text-shadow: 2px 2px #000;'>"
-            "I-5 MADHOUSE – SPEEDERS RUNNING WILD – CLICK THE FUCKERS!</div>",
-            unsafe_allow_html=True
-        )
-
-    else:
-        st.markdown("<h2 style='text-align: center; color: #FF0000;'>READY TO GET SCREAMED AT?</h2>", unsafe_allow_html=True)
-        if st.button("START PATROL – 60s OF PURE HELL!", type="primary", use_container_width=True):
-            st.session_state.game_running = True
-            st.session_state.start_time = time.time()
-            st.session_state.next_car_time = time.time() + 1.0
-            st.session_state.message = random.choice(betts_yells)
-            st.rerun()
-
-# Random offensive yell pressure
-if st.session_state.game_running and random.random() < 0.12 + (st.session_state.score / 120):
-    st.session_state.message = random.choice(betts_yells)
-    st.rerun()
-
+# Footer
 st.markdown("---")
-st.caption("Lt. Betts is now **brutally** offensive – click fast or get roasted! Pure chaotic fun. If still blank, reboot on Cloud or test locally. Let me know what the logs say!")
+st.caption("Click wisely or Lt. Betts will destroy you! Reboot app if stuck (hamburger menu). Pure I-5 chaos in your browser. 🚔💨")
