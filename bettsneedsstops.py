@@ -4,7 +4,7 @@ import time
 
 st.set_page_config(page_title="I-5 Trooper Dash", layout="wide")
 
-# Simple custom CSS for angry Betts box and game style
+# Custom CSS for angry Betts box
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Bangers&display=swap');
@@ -57,13 +57,15 @@ if 'message' not in st.session_state:
     ])
 if 'last_update' not in st.session_state:
     st.session_state.last_update = time.time()
+if 'warning_timer' not in st.session_state:
+    st.session_state.warning_timer = 0  # for temp popup
 
 # Angry Betts image
 BETTS_IMG = "https://thumbs.dreamstime.com/b/angry-army-bootcamp-drill-sergeant-soldier-shouting-cartoon-209860607.jpg"
 
 st.title("🚔 I-5 Trooper Dash – Catch Speeders!")
 
-st.image(BETTS_IMG, width=280, use_column_width=False, caption="Lt. Scott Betts – FURIOUS!")
+st.image(BETTS_IMG, width=280, caption="Lt. Scott Betts – FURIOUS!", output_format="auto", use_column_width=False, clamp=False, channels="RGB", class_="betts-face")
 
 st.markdown(f'<div class="betts-yell">{st.session_state.message}</div>', unsafe_allow_html=True)
 
@@ -72,10 +74,15 @@ col1, col2 = st.columns(2)
 col1.metric("SCORE", st.session_state.score)
 col2.metric("TIME LEFT", f"{int(st.session_state.time_left)}s")
 
+# Temp warning popup logic
+if st.session_state.warning_timer > time.time():
+    st.warning("**YOU VIOLATED AN INNOCENT CITIZEN'S RIGHTS!** Lt. Betts: 'Keep that up and you're FIRED, you idiot! Back off the non-speeders!'")
+    st.rerun()
+
 game_area = st.container()
 with game_area:
     st.markdown('<div class="game-box">', unsafe_allow_html=True)
-    st.markdown("**CLICK THE SPEEDING CARS (🚗💨) AS FAST AS YOU CAN!**")
+    st.markdown("**CLICK THE SPEEDING CARS (🚗💨) – AVOID INNOCENTS (🚐 or 🚍)!**")
 
     if not st.session_state.game_running:
         if st.button("START PATROL – 60 SECONDS OF CHAOS!", type="primary", use_container_width=True):
@@ -113,16 +120,31 @@ with game_area:
 
             st.rerun()
 
-        # Clickable speeding cars
+        # Interactive buttons – mix of speeders and innocents
         cols = st.columns(4)
-        for i in range(8):  # 8 clickable spots
+        for i in range(8):
             col = cols[i % 4]
             with col:
-                if st.button("🚗💨", key=f"car_{i}", help="STOP THE SPEEDER!", use_container_width=True):
-                    st.session_state.score += 1
-                    st.success(random.choice(["GOT 'EM!", "PULLED OVER!", "TICKET WRITTEN!", "NICE STOP!"]))
-                    if st.session_state.score % 5 == 0:
-                        st.balloons()
+                # 60% speeder, 40% innocent
+                is_speeder = random.random() < 0.6
+                emoji = "🚗💨" if is_speeder else random.choice(["🚐", "🚍"])
+                btn_label = emoji
+
+                if st.button(btn_label, key=f"car_{i}_{time.time()}", help="Click to stop (hope it's a speeder!)"):
+                    if is_speeder:
+                        st.session_state.score += 1
+                        st.success(random.choice(["GOT 'EM!", "PULLED OVER!", "TICKET WRITTEN!", "NICE STOP!"]))
+                        if st.session_state.score % 5 == 0:
+                            st.balloons()
+                    else:
+                        # Temp popup for 5 seconds
+                        st.session_state.warning_timer = time.time() + 5
+                        st.session_state.message = random.choice([
+                            "YOU JUST VIOLATED AN INNOCENT FAMILY'S RIGHTS, YOU IDIOT!",
+                            "THAT WAS A SCHOOL BUS – YOU'RE GETTING FIRED IF YOU KEEP THIS UP!",
+                            "INNOCENT CITIZEN STOPPED? RIGHTS VIOLATED – BETTS IS PISSED!",
+                            "WRONG CAR! BACK OFF OR LOSE YOUR BADGE!"
+                        ])
                     st.rerun()
 
     st.markdown('</div>', unsafe_allow_html=True)
