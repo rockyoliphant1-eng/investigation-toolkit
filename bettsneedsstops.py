@@ -1,10 +1,10 @@
 import streamlit as st
-import time
 import random
+import time
 
-st.set_page_config(page_title="I-5 Patrol Flappy", layout="wide")
+st.set_page_config(page_title="I-5 Patrol Dash", layout="wide")
 
-# Custom CSS for game style
+# CSS for game vibe
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Bangers&display=swap');
@@ -31,167 +31,125 @@ st.markdown("""
         box-shadow: 0 0 20px #ff4500;
     }
 
-    .game-container {
-        margin: 0 auto;
-        width: 400px;
+    .highway {
+        background: linear-gradient(to bottom, #228B22 40%, #556B2F 100%);
+        border: 5px dashed #FF8C00;
+        border-radius: 20px;
+        padding: 20px;
+        margin: 20px 0;
+        min-height: 400px;
     }
     </style>
 """, unsafe_allow_html=True)
 
-# Lt. Betts angry image
-BETTS_IMG = "https://media.istockphoto.com/id/1385108467/vector/angry-army-bootcamp-drill-sergeant-cartoon.jpg?s=612x612&w=0&k=20&c=3fGMt7aLzLa0uRGSZREujosQhE77PNWVKPpH6849GFo="
+# Angry Betts
+BETTS_IMG = "https://thumbs.dreamstime.com/b/angry-army-bootcamp-drill-sergeant-soldier-shouting-cartoon-209860607.jpg"
 
-st.title("🚔 I-5 Patrol Flappy – Avoid Debris & Cars!")
+st.title("🚔 I-5 Patrol Dash – Flappy Style!")
 
-st.image(BETTS_IMG, width=280, caption="Lt. Scott Betts – FURIOUS!", use_column_width=False, clamp=False, channels="RGB", class_="betts-face")
+st.image(BETTS_IMG, width=280, caption="Lt. Scott Betts – YELLING AT YOU!", class_="betts-face")
 
-st.markdown(f'<div class="betts-yell">{st.session_state.get("message", "GET THOSE SPEEDERS, TROOPER!")}</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="betts-yell">{st.session_state.get("message", "FLY THROUGH THE HIGHWAY – AVOID DEBRIS!")}</div>', unsafe_allow_html=True)
 
-# Full HTML for the Flappy Bird-like game (themed as patrol car avoiding debris/cars)
-game_html = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>I-5 Patrol Flappy</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #87CEEB;
-        }
-        #game-container {
-            position: relative;
-            width: 400px;
-            height: 600px;
-            background-color: #FFFFFF;
-            overflow: hidden;
-        }
-        #patrol-car {
-            position: absolute;
-            width: 50px;
-            height: 30px;
-            background-color: #0000FF;
-            border-radius: 5px;
-        }
-        .obstacle {
-            position: absolute;
-            width: 60px;
-            background-color: #A9A9A9;
-            outline: none;
-        }
-    </style>
-</head>
-<body>
-    <div id="game-container">
-        <div id="patrol-car"></div>
-    </div>
-    <script>
-        const container = document.getElementById("game-container");
-        const car = document.getElementById("patrol-car");
-        let carTop = 250;
-        let carLeft = 50;
-        let gravity = 2;
-        let gameSpeed = 2;
-        let isGameOver = false;
-        let score = 0;
-        let obstacles = [];
+# State
+if 'score' not in st.session_state:
+    st.session_state.score = 0
+if 'car_y' not in st.session_state:
+    st.session_state.car_y = 200
+if 'game_running' not in st.session_state:
+    st.session_state.game_running = False
+if 'obstacles' not in st.session_state:
+    st.session_state.obstacles = []
+if 'last_update' not in st.session_state:
+    st.session_state.last_update = time.time()
+if 'message' not in st.session_state:
+    st.session_state.message = "CLICK/SPACE TO JUMP – DON'T HIT DEBRIS!"
 
-        function jump() {
-            if (!isGameOver) {
-                carTop -= 50;
-            }
-        }
+highway = st.container()
+with highway:
+    st.markdown('<div class="highway">', unsafe_allow_html=True)
 
-        document.addEventListener("keydown", (e) => if (e.code === 'Space') jump(););
-        document.addEventListener("click", jump);
+    if not st.session_state.game_running:
+        st.markdown("**Patrol car (🚔) drives right. Click or press SPACE to jump up. Avoid debris/cars (gray obstacles).**")
+        if st.button("START PATROL – FLAP THROUGH I-5!", type="primary", use_container_width=True):
+            st.session_state.game_running = True
+            st.session_state.score = 0
+            st.session_state.car_y = 200
+            st.session_state.obstacles = []
+            st.session_state.last_update = time.time()
+            st.session_state.message = random.choice([
+                "DON'T HIT ANYTHING, YOU LAZY TROOPER!",
+                "AVOID DEBRIS OR I'LL HAVE YOUR BADGE!",
+                "FLY STRAIGHT – NO EXCUSES!"
+            ])
+            st.rerun()
+    else:
+        now = time.time()
+        dt = now - st.session_state.last_update
 
-        function createObstacle() {
-            const topHeight = Math.random() * 200 + 50;
-            const bottomTop = topHeight + 200;  // Gap of 200
-            const bottomHeight = container.clientHeight - bottomTop;
+        if dt > 0.05:  # ~20 fps
+            # Gravity
+            st.session_state.car_y += 8  # fall speed
 
-            const topObstacle = document.createElement("div");
-            topObstacle.classList.add("obstacle");
-            topObstacle.style.height = topHeight + "px";
-            topObstacle.style.top = "0px";
-            topObstacle.style.left = "400px";
-            container.appendChild(topObstacle);
+            # Jump if clicked (Streamlit button below)
+            # (We use a hidden button for space/click)
 
-            const bottomObstacle = document.createElement("div");
-            bottomObstacle.classList.add("obstacle");
-            bottomObstacle.style.height = bottomHeight + "px";
-            bottomObstacle.style.top = bottomTop + "px";
-            bottomObstacle.style.left = "400px";
-            container.appendChild(bottomObstacle);
+            # Spawn obstacles
+            if random.random() < 0.02:
+                obs_y = random.randint(0, 400)
+                obs_type = random.choice(["debris", "car"])
+                st.session_state.obstacles.append({"x": 400, "y": obs_y, "type": obs_type})
 
-            obstacles.push(topObstacle, bottomObstacle);
-        }
+            # Move obstacles left
+            for obs in st.session_state.obstacles[:]:
+                obs["x"] -= 5
+                if obs["x"] < -50:
+                    st.session_state.obstacles.remove(obs)
+                    st.session_state.score += 1
 
-        function updateObstacles() {
-            for (let i = 0; i < obstacles.length; i++) {
-                let left = parseInt(obstacles[i].style.left);
-                left -= gameSpeed;
-                obstacles[i].style.left = left + "px";
+            # Collision check
+            car_rect = {"left": 50, "right": 100, "top": st.session_state.car_y, "bottom": st.session_state.car_y + 30}
+            hit = False
+            for obs in st.session_state.obstacles:
+                obs_rect = {"left": obs["x"], "right": obs["x"] + 50, "top": obs["y"], "bottom": obs["y"] + 50}
+                if (car_rect["right"] > obs_rect["left"] and car_rect["left"] < obs_rect["right"] and
+                    car_rect["bottom"] > obs_rect["top"] and car_rect["top"] < obs_rect["bottom"]):
+                    hit = True
+                    break
 
-                if (left < -60) {
-                    obstacles[i].remove();
-                    obstacles.splice(i, 1);
-                    i--;
-                    score += 0.5;  // Half point per obstacle pair
-                }
-            }
-        }
+            if hit or st.session_state.car_y > 550 or st.session_state.car_y < 0:
+                st.session_state.game_running = False
+                st.session_state.message = "CRASHED! Betts says: 'YOU'RE FIRED, IDIOT!'"
+                st.error("**CRASH!** Debris or car hit – game over.")
+                st.rerun()
 
-        function checkCollision() {
-            const carRect = car.getBoundingClientRect();
-            for (let obstacle of obstacles) {
-                const obsRect = obstacle.getBoundingClientRect();
-                if (
-                    carRect.right > obsRect.left &&
-                    carRect.left < obsRect.right &&
-                    carRect.bottom > obsRect.top &&
-                    carRect.top < obsRect.bottom
-                ) {
-                    isGameOver = true;
-                }
-            }
-        }
+            st.session_state.last_update = now
+            st.rerun()
 
-        function gameLoop() {
-            if (!isGameOver) {
-                carTop += gravity;
-                car.style.top = carTop + "px";
+        # Render highway scene
+        st.markdown(f"""
+        <div style="position: relative; height: 500px; overflow: hidden;">
+            <div style="position: absolute; left: 50px; top: {st.session_state.car_y}px; font-size: 50px;">🚔</div>
+            {"".join([f'<div style="position: absolute; left: {obs["x"]}px; top: {obs["y"]}px; font-size: 40px;">{"🪨" if obs["type"] == "debris" else "🚗"}</div>' for obs in st.session_state.obstacles])}
+        </div>
+        """, unsafe_allow_html=True)
 
-                updateObstacles();
-                checkCollision();
+        # Jump button (click anywhere or use space via browser)
+        if st.button("JUMP / FLAP UP (or press SPACE)", type="primary", key="jump", use_container_width=True):
+            st.session_state.car_y -= 60  # jump strength
+            st.rerun()
 
-                if (carTop <= 0 || carTop >= 560) {
-                    isGameOver = true;
-                }
+        st.metric("SCORE", st.session_state.score)
 
-                if (Math.random() < 0.02) {
-                    createObstacle();
-                }
+    st.markdown('</div>', unsafe_allow_html=True)
 
-                requestAnimationFrame(gameLoop);
-            } else {
-                alert("Game Over! Score: " + Math.floor(score));
-            }
-        }
-
-        createObstacle();
-        gameLoop();
-    </script>
-</body>
-</html>
-"""
-
-st.components.v1.html(game_html, height=650, scrolling=False)
-
-# Update Betts yelling periodically
-if st.session_state.game_running:
-    if random.random() < 0.1:
-        st.session_state.message = random.choice(yells)
+# Restart
+if not st.session_state.game_running and st.session_state.score > 0:
+    if st.button("PLAY AGAIN – DON'T CRASH THIS TIME"):
+        st.session_state.game_running = True
+        st.session_state.score = 0
+        st.session_state.car_y = 200
+        st.session_state.obstacles = []
         st.rerun()
+
+st.caption("Click the JUMP button (or press SPACE) to flap up. Patrol car auto-drives right. Avoid debris/cars. Betts yells if you crash!")
