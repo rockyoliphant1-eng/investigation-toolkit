@@ -1,121 +1,133 @@
 import streamlit as st
 import random
+import time
 
-# Initialize session state
+# Session state init (same as before)
 if "score" not in st.session_state:
     st.session_state.score = 0
+if "time_left" not in st.session_state:
+    st.session_state.time_left = 60
+if "game_running" not in st.session_state:
+    st.session_state.game_running = False
+if "cars" not in st.session_state:
+    st.session_state.cars = []  # list of dicts: {'id': int, 'x': float, 'y': float}
+if "next_car_time" not in st.session_state:
+    st.session_state.next_car_time = time.time()
 if "message" not in st.session_state:
-    st.session_state.message = ""
-if "cop_pos" not in st.session_state:
-    st.session_state.cop_pos = [2, 1]  # [lane (0-4), x position (0-9)]
-if "speeders" not in st.session_state:
-    st.session_state.speeders = []  # List of [lane, x] for speeders
-if "difficulty" not in st.session_state:
-    st.session_state.difficulty = 1
-if "moves" not in st.session_state:
-    st.session_state.moves = 0
+    st.session_state.message = "Get ready, Trooper!"
 
-st.title("🚔 I-5 Speed Enforcement - Trooper Life")
-st.markdown("**Move your patrol car (🚔) to pull over speeders (🚗) on the highway! Lt. Betts is watching...**")
+# Lieutenant Betts image (angry yelling with campaign hat – cartoon style for fun)
+BETTS_IMG = "https://thumbs.dreamstime.com/z/angry-army-bootcamp-drill-sergeant-soldier-pointing-viewer-shouting-cartoon-angry-army-bootcamp-drill-sergeant-245204815.jpg"
 
-# Lieutenant Betts yelling area with image
-col1, col2 = st.columns([1, 3])
-with col1:
-    st.image("https://media.istockphoto.com/id/1385108467/vector/angry-army-bootcamp-drill-sergeant-cartoon.jpg?s=612x612&w=0&k=20&c=3fGMt7aLzLa0uRGSZREujosQhE77PNWVKPpH6849GFo=", width=150, caption="Lt. Betts")
-with col2:
-    st.subheader("Lt. Betts on the radio:")
-    betts_yells = [
-        "Trooper! Where are the tickets?! MOVE IT!",
-        "You're letting them get away! STEP ON IT!",
-        "I want FIVE more stops THIS HOUR!",
-        "That's a 90 in a 70 — PULL HIM OVER NOW!",
-        "Betts to unit — quit sightseeing and write some citations!",
-        "My grandmother drives faster than you pull people over!",
-        "Quota time is ticking, trooper!",
-        "I see THREE speeders — why aren't they stopped yet?!"
-    ]
-    # Yell more often as score rises
-    if random.random() < (0.3 + st.session_state.score / 50):
-        st.session_state.message = random.choice(betts_yells)
-    st.info(st.session_state.message or "Waiting for your next stop...")
+# FUNNIER YELLS – over-the-top, absurd, roast-heavy for maximum laughs
+betts_yells = [
+    "TROOPER! CLICK THAT SPEEDER OR I'LL MAKE YOU WRITE TICKETS WITH YOUR TEETH!",
+    "YOU'RE SLOWER THAN A TURTLE ON VALIUM – MY GRANDMA JUST PASSED YOU IN HER SCOOTER!",
+    "I'VE SEEN MORE ACTION FROM A PARKED DONUT – CLICK FASTER BEFORE I RECYCLE YOU TO PARKING ENFORCEMENT!",
+    "THAT CAR'S DOING 90? YOU'RE DOING 0! PULL IT OVER OR I'LL PULL YOUR BADGE!",
+    "QUOTA'S AT ZERO AND YOU'RE AT ZERO BRAIN CELLS – MOVE IT, MAGGOT!",
+    "YOUR PARENTS SENT ME A THANK-YOU NOTE FOR TAKING YOU OFF THEIR HANDS – DON'T MAKE ME SEND ONE BACK!",
+    "I'M GONNA TAKE YOUR BADGE, SHOVE IT IN A BOX, AND MAIL IT TO YOUR MOM WITH A NOTE: 'HE TRIED.'",
+    "YOU CALL THAT PATROLLING? I CALL IT NAP TIME! CLICK OR I'LL SMOKE YOU LIKE A BAD CIGAR!",
+    "IF YOU MISS ONE MORE, I'LL MAKE YOU CLEAN THE INTERCEPTOR WITH YOUR TONGUE – AND IT'S GOT BUG GUTS!",
+    "YOU'RE LETTING THEM GET AWAY? I'D RATHER HAVE A HAMSTER ON THE FORCE – AT LEAST IT'D RUN!",
+    "THIS IS I-5, NOT A TEA PARTY! ENFORCE THE SPEED LIMIT OR I'LL ENFORCE MY BOOT ON YOUR BUTT!",
+    "YOUR REFLEXES ARE SO SLOW, A SLOTH JUST LAPSED YOU – CLICK NOW OR FOREVER HOLD YOUR PEACE (AND TICKETS)!"
+]
 
-# Score and difficulty
-st.metric("Cars Stopped", st.session_state.score)
-if st.session_state.score > 10:
-    st.warning(f"Traffic heating up! Difficulty: {st.session_state.difficulty:.1f}x")
+st.set_page_config(page_title="I-5 Speed Catcher", layout="wide")
 
-# Highway grid (5 lanes, 10 positions wide)
-def render_highway():
-    grid = [["🛣️" for _ in range(10)] for _ in range(5)]  # Empty highway
-    # Place speeders
-    for lane, x in st.session_state.speeders:
-        if 0 <= x < 10:
-            grid[lane][x] = "🚗"
-    # Place cop car
-    lane, x = st.session_state.cop_pos
-    grid[lane][x] = "🚔"
-    # Render as text grid
-    highway_str = "\n".join(" ".join(row) for row in grid)
-    st.text_area("I-5 Highway (You are 🚔, Speeders are 🚗)", highway_str, height=150)
+# Header with Betts yelling
+col_img, col_title = st.columns([1, 4])
+with col_img:
+    st.image(BETTS_IMG, width=180, caption="Lt. Scott Betts – Losing His Mind Over You!")
+with col_title:
+    st.title("🚔 I-5 SPEEDING CAR CATCHER!")
+    st.subheader("Click the speeding cars before Lt. Betts has a full meltdown!")
 
-render_highway()
+# Game HUD (same as before)
+hud_col1, hud_col2, hud_col3 = st.columns(3)
+with hud_col1:
+    st.metric("SCORE", st.session_state.score, delta_color="normal")
+with hud_col2:
+    st.metric("TIME LEFT", f"{int(st.session_state.time_left)}s")
+with hud_col3:
+    if st.session_state.score > 0:
+        st.metric("CARS/SEC", f"{st.session_state.score / (60 - st.session_state.time_left):.1f}")
 
-# Movement buttons
-col_up, col_down, col_left, col_right = st.columns(4)
-with col_up:
-    if st.button("⬆️ Up"):
-        st.session_state.cop_pos[0] = max(0, st.session_state.cop_pos[0] - 1)
-        update_game()
-with col_down:
-    if st.button("⬇️ Down"):
-        st.session_state.cop_pos[0] = min(4, st.session_state.cop_pos[0] + 1)
-        update_game()
-with col_left:
-    if st.button("⬅️ Left"):
-        st.session_state.cop_pos[1] = max(0, st.session_state.cop_pos[1] - 1)
-        update_game()
-with col_right:
-    if st.button("➡️ Right"):
-        st.session_state.cop_pos[1] = min(9, st.session_state.cop_pos[1] + 1)
-        update_game()
+# Yelling radio – now even funnier!
+st.info(f"**Lt. Betts SCREAMING at you:** {st.session_state.message}")
 
-# Pursuit button for extra action
-if st.button("🚨 Activate Lights & Pursue!"):
-    # Bonus stop chance
-    if random.random() < 0.5:
-        st.session_state.score += random.randint(1, 3)
-        st.success("Big pursuit! Extra stops!")
-        st.balloons()
+# Game area – clickable container for cars (same logic)
+game_container = st.container()
+with game_container:
+    if st.session_state.game_running:
+        # Timer logic (unchanged)
+        current_time = time.time()
+        if current_time - st.session_state.start_time >= 1:
+            st.session_state.time_left -= 1
+            st.session_state.start_time = current_time
+            if st.session_state.time_left <= 0:
+                st.session_state.game_running = False
+                st.balloons()
+                st.success(f"**ROUND OVER! Final Score: {st.session_state.score}** – Lt. Betts says: 'Not terrible... for a civilian.'")
+                if st.button("Play Again – Prove Betts Wrong!"):
+                    st.session_state.score = 0
+                    st.session_state.time_left = 60
+                    st.session_state.cars = []
+                    st.session_state.game_running = True
+                    st.session_state.start_time = time.time()
+                    st.session_state.next_car_time = time.time() + 1.5
+                    st.rerun()
+
+        # Spawn cars (unchanged – gets faster with score)
+        spawn_rate = max(0.4, 2.0 - (st.session_state.score / 20))
+        if current_time > st.session_state.next_car_time:
+            car_id = len(st.session_state.cars)
+            x = random.uniform(10, 90)
+            y = random.uniform(10, 80)
+            st.session_state.cars.append({"id": car_id, "x": x, "y": y})
+            st.session_state.next_car_time = current_time + random.uniform(spawn_rate - 0.3, spawn_rate + 0.5)
+
+        # Clickable cars
+        for car in st.session_state.cars[:]:
+            car_emoji = random.choice(["🚗💨", "🏎️💨", "🚙💨", "🛻💨"])
+            if st.button(
+                car_emoji,
+                key=f"car_{car['id']}",
+                help="CLICK TO PULL OVER – SAVE YOUR BADGE!",
+                use_container_width=False,
+                type="primary"
+            ):
+                st.session_state.score += 1
+                st.session_state.cars.remove(car)
+                st.session_state.message = random.choice(betts_yells[:4])  # Quick angry praise
+                if st.session_state.score % 5 == 0:
+                    st.balloons()
+                    st.session_state.message = random.choice(betts_yells[4:])  # Extra roast on multiples
+                st.rerun()
+
+        # Visual highway zone
+        st.markdown(
+            "<div style='height: 400px; background: linear-gradient(to bottom, #4CAF50, #8BC34A); border: 4px dashed #FF9800; border-radius: 15px; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; font-weight: bold;'>"
+            "I-5 CHAOS ZONE – SPEEDERS EVERYWHERE – CLICK 'EM BEFORE BETTS EXPLODES!</div>",
+            unsafe_allow_html=True
+        )
+
     else:
-        st.warning("They evaded... Keep trying!")
-    update_game()
+        # Start screen
+        st.markdown("<h2 style='text-align: center; color: #FF5722;'>READY TO FACE LT. BETTS' WRATH?</h2>", unsafe_allow_html=True)
+        if st.button("START PATROL – SURVIVE 60 SECONDS OF YELLING!", type="primary", use_container_width=True):
+            st.session_state.game_running = True
+            st.session_state.start_time = time.time()
+            st.session_state.next_car_time = time.time() + 1.5
+            st.session_state.message = random.choice(betts_yells)
+            st.rerun()
 
-def update_game():
-    st.session_state.moves += 1
-    # Move speeders left (faster with difficulty)
-    for s in st.session_state.speeders:
-        s[1] -= int(st.session_state.difficulty)
-    # Remove off-screen speeders
-    st.session_state.speeders = [s for s in st.session_state.speeders if s[1] >= 0]
-    # Check for pulls (adjacent to cop)
-    cop_lane, cop_x = st.session_state.cop_pos
-    pulled = []
-    for i, (lane, x) in enumerate(st.session_state.speeders):
-        if abs(lane - cop_lane) <= 1 and abs(x - cop_x) <= 1:
-            pulled.append(i)
-            st.session_state.score += 1
-    for i in sorted(pulled, reverse=True):
-        del st.session_state.speeders[i]
-    if pulled:
-        st.success(f"Pulled over {len(pulled)} speeder(s)!")
-    # Spawn new speeders (more with difficulty)
-    if random.random() < (0.2 * st.session_state.difficulty):
-        new_lane = random.randint(0, 4)
-        st.session_state.speeders.append([new_lane, 9])  # Start from right
-    # Increase difficulty every 5 moves
-    if st.session_state.moves % 5 == 0:
-        st.session_state.difficulty += 0.1
-    st.rerun()  # Refresh the app
+# Random yell updates for extra pressure & laughs
+if st.session_state.game_running and random.random() < 0.1 + (st.session_state.score / 150):
+    st.session_state.message = random.choice(betts_yells)
+    st.rerun()
 
 st.markdown("---")
-st.caption("Click movement buttons to chase speeders. They move left each turn — catch 'em quick! For even more real-time action, we could switch to Replit or pygbag.")
+st.caption("Lt. Betts is angrier (and funnier) than ever! Click those speeders fast – or he'll roast you into next week. Pure chaos fun on Streamlit. 🚔😂")
